@@ -34,6 +34,7 @@ class Login extends React.Component {
       }
     })
       .then((response) => {
+        localStorage.setItem("isAuthenticated", true);
         this.props.setAuthentication(true);
       })
       .catch(error => {

@@ -9,7 +9,7 @@ export class LoginContextProvider extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      isAuthenticated: false,
+      isAuthenticated: localStorage.getItem("isAuthenticated"),
       setAuthentication: this.setAuthentication
     };
   }
