@@ -11,7 +11,7 @@ export default function App() {
         <LoginContext.Consumer>
           {props =>
             !props.isAuthenticated ? (
-              <Login setAuthentication={props.setAuthentication} />
+              <Login authenticate={props.authenticate} />
             ) : (
               <div>Logged in</div>
             )

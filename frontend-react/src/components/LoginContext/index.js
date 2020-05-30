@@ -1,20 +1,41 @@
 import React, { Component } from "react";
+import axios from 'axios';
 
 const Context = React.createContext({
   isAuthenticated: false,
-  setAuthentication: () => {}
+  authenticate: () => {}
 });
 
 export class LoginContextProvider extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      isAuthenticated: localStorage.getItem("isAuthenticated"),
-      setAuthentication: this.setAuthentication
+      isAuthenticated: JSON.parse(localStorage.getItem("isAuthenticated")) || false,
+      authenticate: this.authenticate
     };
   }
 
+  authenticate = (email, password) => {
+    const apiUrl = '/login';
+    axios({
+      method: 'post', 
+      url: `${apiUrl}`, 
+      data: {
+        email: email,
+        password: password
+      }
+    })
+      .then((response) => {
+        this.setAuthentication(true);
+      })
+      .catch(error => {
+    	alert(error);
+      })
+
+  };
+
   setAuthentication = isAuthenticated => {
+    localStorage.setItem("isAuthenticated", JSON.stringify(isAuthenticated));
     this.setState({
       ...this.State,
       isAuthenticated: isAuthenticated
@@ -22,9 +43,9 @@ export class LoginContextProvider extends Component {
   };
 
   render() {
-    const { isAuthenticated, setAuthentication } = this.state;
+    const { isAuthenticated, authenticate } = this.state;
     return (
-      <Context.Provider value={{ isAuthenticated, setAuthentication }}>
+      <Context.Provider value={{ isAuthenticated, authenticate }}>
         {this.props.children}
       </Context.Provider>
     );

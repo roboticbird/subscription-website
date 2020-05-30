@@ -1,8 +1,5 @@
 import React from 'react';
 import { Button, FormGroup, FormControl, FormLabel } from "react-bootstrap";
-import axios from 'axios';
-
-
 
 class Login extends React.Component {
   constructor(props) {
@@ -21,25 +18,9 @@ class Login extends React.Component {
   }
 
   handleSubmit(event) {
-    const apiUrl = '/login';
     const { email, password } = this.state;
     event.preventDefault();
-
-    axios({
-      method: 'post', 
-      url: `${apiUrl}`, 
-      data: {
-        email: email,
-        password: password
-      }
-    })
-      .then((response) => {
-        localStorage.setItem("isAuthenticated", true);
-        this.props.setAuthentication(true);
-      })
-      .catch(error => {
-    	alert(error);
-      })
+    this.props.authenticate(email, password);
   }
 
   render() {
