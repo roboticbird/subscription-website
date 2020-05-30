@@ -29,6 +29,10 @@ type LoginData struct {
 	Password string
 }
 
+type NewSubData struct {
+	ProductId int
+}
+
 func (app *App) Setup() {
 	// set up session store
 	app.Store.Options = &sessions.Options{
@@ -271,17 +275,18 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = r.ParseForm()
+	decoder := json.NewDecoder(r.Body)
+	var newSub NewSubData
+	err = decoder.Decode(&newSub)
 	if err != nil {
 		log.Printf("New subscription error: %s\n", err)
 		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
 		return
 	}
 
-	product_id := r.FormValue("product_id")
-	subscription, err := app.getSubscription(user.UserDetails, product_id)
+	subscription, err := app.getSubscription(user.UserDetails, strconv.Itoa(newSub.ProductId))
 	if subscription != nil {
-		log.Printf("User trying to buy duplicate subscription: user=%d, product=%s, status=%s\n", user.UserDetails.ID, product_id, subscription.Status)
+		log.Printf("User trying to buy duplicate subscription: user=%d, product=%d, status=%s\n", user.UserDetails.ID, newSub.ProductId, subscription.Status)
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
@@ -291,7 +296,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = app.Database.Exec(fmt.Sprintf("INSERT INTO subscriptions (user_id, product_id, start_date, status) VALUES(%d, %s, NOW(), 'ACTIVE')", user.UserDetails.ID, product_id))
+	_, err = app.Database.Exec(fmt.Sprintf("INSERT INTO subscriptions (user_id, product_id, start_date, status) VALUES(%d, %d, NOW(), 'ACTIVE')", user.UserDetails.ID, newSub.ProductId))
 	if err != nil {
 		log.Printf("Error writing to database: %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

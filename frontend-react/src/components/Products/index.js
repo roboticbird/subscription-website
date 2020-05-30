@@ -1,5 +1,6 @@
 import React from 'react';
 import axios from 'axios';
+import BuyPopup from '../BuyPopup';
 
 class Products extends React.Component {
   constructor(props) {
@@ -7,7 +8,8 @@ class Products extends React.Component {
     this.state = {
       isLoading: true,
       products: [],
-      error: null
+      error: null,
+      product_id: -1,
     }
   }
 
@@ -19,9 +21,17 @@ class Products extends React.Component {
         this.setState({
           products: response.data,
           isLoading: false,
+          showPopup: false,
         })
       })
       .catch(error => this.setState({ error, isLoading: false }));
+  }
+
+  togglePopup(event, id) {
+    this.setState({
+      showPopup: !this.state.showPopup,
+      product_id: id
+    });
   }
 
   render() {
@@ -38,8 +48,16 @@ class Products extends React.Component {
                 <div key={id}>
                   <h2>{name}</h2>
                   <p>{description}</p>
-                  <p>Price: {price}, Duration: {duration}</p>
+                  <p>Price: {(price/100).toFixed(2)} EUR, Duration: {duration} days</p>
+                  <button onClick={(e) => this.togglePopup(e, id)}>Subscribe</button>
                   <hr />
+		  {(this.state.showPopup && this.state.product_id === id) ? 
+		    <BuyPopup
+		      product={product}
+		      closePopup={(e) => this.togglePopup(e, id)}
+		    />
+		    : null
+		  }
                 </div>
               );
             })

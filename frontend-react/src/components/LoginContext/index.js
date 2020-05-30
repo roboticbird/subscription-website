@@ -3,7 +3,8 @@ import axios from 'axios';
 
 const Context = React.createContext({
   isAuthenticated: false,
-  authenticate: () => {}
+  authenticate: () => {},
+  user: null
 });
 
 export class LoginContextProvider extends Component {
@@ -11,7 +12,8 @@ export class LoginContextProvider extends Component {
     super(props);
     this.state = {
       isAuthenticated: JSON.parse(localStorage.getItem("isAuthenticated")) || false,
-      authenticate: this.authenticate
+      authenticate: this.authenticate,
+      user: JSON.parse(localStorage.getItem("user")) || null,
     };
   }
 
@@ -27,12 +29,32 @@ export class LoginContextProvider extends Component {
     })
       .then((response) => {
         this.setAuthentication(true);
+        this.getUser()
       })
       .catch(error => {
     	alert(error);
       })
 
   };
+
+  getUser = () => {
+    const apiUrl = '/userInfo';
+    axios({
+      method: 'get', 
+      url: `${apiUrl}` 
+    })
+      .then((response) => {
+        this.setState({
+          ...this.State,
+          user: response.data 
+        });
+        localStorage.setItem("user", JSON.stringify(response.data));
+      })
+      .catch(error => {
+    	alert(error);
+      })
+  };
+
 
   setAuthentication = isAuthenticated => {
     localStorage.setItem("isAuthenticated", JSON.stringify(isAuthenticated));
@@ -43,9 +65,9 @@ export class LoginContextProvider extends Component {
   };
 
   render() {
-    const { isAuthenticated, authenticate } = this.state;
+    const { isAuthenticated, authenticate, user } = this.state;
     return (
-      <Context.Provider value={{ isAuthenticated, authenticate }}>
+      <Context.Provider value={{ isAuthenticated, authenticate, user }}>
         {this.props.children}
       </Context.Provider>
     );
