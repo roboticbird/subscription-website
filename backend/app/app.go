@@ -24,6 +24,11 @@ type UserSession struct {
 	Authenticated bool
 }
 
+type LoginData struct {
+	Email    string
+	Password string
+}
+
 func (app *App) Setup() {
 	// set up session store
 	app.Store.Options = &sessions.Options{
@@ -123,24 +128,24 @@ func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = r.ParseForm()
+	decoder := json.NewDecoder(r.Body)
+	var login LoginData
+	err = decoder.Decode(&login)
+
 	if err != nil {
 		log.Printf("Login error: %s\n", err)
-		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
+		http.Error(w, "Please pass the data as JSON", http.StatusBadRequest)
 		return
 	}
 
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-
-	user, err := app.getUser(email)
+	user, err := app.getUser(login.Email)
 	if err != nil {
-		log.Printf(err.Error())
-
+		log.Printf("Login error for %s: %s", login.Email, err.Error())
 		http.Error(w, "Invalid Credentials", http.StatusUnauthorized)
 		return
 	}
-	if password != user.Password {
+	if login.Password != user.Password {
+		log.Printf("Login error for %s: %s", login.Email, err.Error())
 		http.Error(w, "Invalid Credentials", http.StatusUnauthorized)
 		return
 	}
@@ -150,6 +155,7 @@ func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 		Authenticated: true,
 	}
 	session.Values["user"] = sessionUser
+	session.Options = &sessions.Options{SameSite: http.SameSiteStrictMode}
 	err = session.Save(r, w)
 	if err != nil {
 		log.Printf("Unable to save session %s\n", err.Error())
