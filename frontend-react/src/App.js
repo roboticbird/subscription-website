@@ -1,33 +1,25 @@
-import React, { Component } from 'react';
+import React from 'react';
 import Products from './components/Products';
 import Login from './components/Login';
+import LoginContext from "./components/LoginContext";
 import './App.css';
 
-
-export const GlobalStateContext = React.createContext();
-
-
-class App extends Component {
-  setAuthentication = isAuthenticated => {
-    this.setAuthentication({ isAuthenticated });
-  };
-  
-  globalState = {
-    isAuthenticated: false,
-    setAuthentication: () => {},
-  };
-
-
-  render() {
-    return (
-      <div className="App">
-        <GlobalStateContext.Provider value={this.globalState}>
-          <Login />
-          <Products />
-        </GlobalStateContext.Provider>
-      </div>
-    );
-  }
+export default function App() {
+  return (
+    <div className="App">
+      <LoginContext.Provider>
+        <LoginContext.Consumer>
+          {props =>
+            !props.isAuthenticated ? (
+              <Login setAuthentication={props.setAuthentication} />
+            ) : (
+              <div>Logged in</div>
+            )
+          }
+        </LoginContext.Consumer>
+      </LoginContext.Provider>
+      <Products />
+    </div>
+  );
 }
 
-export default App;
