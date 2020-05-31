@@ -49,7 +49,10 @@ class Products extends React.Component {
                   <h2>{name}</h2>
                   <p>{description}</p>
                   <p>Price: {(price/100).toFixed(2)} EUR, Duration: {duration} days</p>
-                  <button onClick={(e) => this.togglePopup(e, id)}>Subscribe</button>
+                  {this.props.isAuthenticated ?
+                   <button onClick={(e) => this.togglePopup(e, id)}>Subscribe</button>
+                   : null
+                  }
                   <hr />
 		  {(this.state.showPopup && this.state.product_id === id) ? 
 		    <BuyPopup

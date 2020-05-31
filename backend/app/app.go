@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -22,15 +23,6 @@ type App struct {
 type UserSession struct {
 	UserDetails   *User
 	Authenticated bool
-}
-
-type LoginData struct {
-	Email    string
-	Password string
-}
-
-type NewSubData struct {
-	ProductId int
 }
 
 func (app *App) Setup() {
@@ -79,6 +71,11 @@ func (app *App) Setup() {
 		Methods("GET").
 		Path("/subscriptions").
 		HandlerFunc(app.subscriptionsHandler)
+	// this should be made private for internal use only
+	app.Router.
+		Methods("POST").
+		Path("/cronUpdate").
+		HandlerFunc(app.cronUpdateHandler)
 }
 
 func (app *App) forbiddenHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,15 +123,15 @@ func (app *App) userInfoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := app.Store.Get(r, "session.id")
-	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	type LoginData struct {
+		Email    string
+		Password string
 	}
+
+	session, _ := app.Store.Get(r, "session.id")
 	decoder := json.NewDecoder(r.Body)
 	var login LoginData
-	err = decoder.Decode(&login)
+	err := decoder.Decode(&login)
 
 	if err != nil {
 		log.Printf("Login error: %s\n", err)
@@ -170,16 +167,11 @@ func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := app.Store.Get(r, "session.id")
-	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	session, _ := app.Store.Get(r, "session.id")
 	session.Values["user"] = UserSession{}
 	session.Options.MaxAge = -1
 
-	err = session.Save(r, w)
+	err := session.Save(r, w)
 	if err != nil {
 		log.Printf("Unable to save session %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -199,16 +191,19 @@ func (app *App) getProduct(product_id string) (*Product, error) {
 }
 
 func (app *App) productHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	type ProductData struct {
+		ProductId int
+	}
+	decoder := json.NewDecoder(r.Body)
+	var prodData ProductData
+	err := decoder.Decode(&prodData)
 	if err != nil {
-		log.Printf("Get product error: %s\n", err)
+		log.Printf("Product error: %s\n", err)
 		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
 		return
 	}
 
-	product_id := r.FormValue("product_id")
-
-	product, err := app.getProduct(product_id)
+	product, err := app.getProduct(strconv.Itoa(prodData.ProductId))
 	if err != nil {
 		log.Printf("Session store error: %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -256,6 +251,10 @@ func (app *App) productsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
+	type NewSubData struct {
+		ProductId int
+	}
+
 	session, err := app.Store.Get(r, "session.id")
 	if err != nil {
 		log.Printf("Session store error: %s\n", err)
@@ -296,7 +295,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = app.Database.Exec(fmt.Sprintf("INSERT INTO subscriptions (user_id, product_id, start_date, status) VALUES(%d, %d, NOW(), 'ACTIVE')", user.UserDetails.ID, newSub.ProductId))
+	_, err = app.Database.Exec(fmt.Sprintf("INSERT INTO subscriptions (user_id, product_id, start_date, status, nextStatus) VALUES(%d, %d, NOW(), 'ACTIVE', 'QUEUED')", user.UserDetails.ID, newSub.ProductId))
 	if err != nil {
 		log.Printf("Error writing to database: %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -341,6 +340,11 @@ func (app *App) subscriptionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
+	type UpdateSubData struct {
+		ProductId int
+		Action    string
+	}
+
 	session, err := app.Store.Get(r, "session.id")
 	if err != nil {
 		log.Printf("Session store error: %s\n", err)
@@ -360,16 +364,17 @@ func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request
 		http.Redirect(w, r, "/forbidden", http.StatusFound)
 		return
 	}
-	err = r.ParseForm()
+
+	decoder := json.NewDecoder(r.Body)
+	var updateSub UpdateSubData
+	err = decoder.Decode(&updateSub)
 	if err != nil {
 		log.Printf("Update subscription error: %s\n", err)
-		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
+		http.Error(w, "Please pass the data as JSON", http.StatusBadRequest)
 		return
 	}
 
-	product_id := r.FormValue("product_id")
-	status := r.FormValue("status")
-	subscription, err := app.getSubscription(user.UserDetails, product_id)
+	subscription, err := app.getSubscription(user.UserDetails, strconv.Itoa(updateSub.ProductId))
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Error reading database: %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -380,13 +385,23 @@ func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if status != "ACTIVE" && status != "PAUSED" && status != "CANCELLED" {
-		log.Printf("Trying to update to invalid status code: %s\n", status)
+
+	query := ""
+	switch updateSub.Action {
+	case "QUEUE":
+		query = fmt.Sprintf("UPDATE subscriptions SET nextStatus = 'QUEUED' WHERE id = %d", subscription.ID)
+	case "PAUSE":
+		query = fmt.Sprintf("UPDATE subscriptions SET nextStatus = 'PAUSED' WHERE id = %d", subscription.ID)
+	case "CANCEL":
+		query = fmt.Sprintf("UPDATE subscriptions SET status = 'CANCELLED' WHERE id = %d", subscription.ID)
+	default:
+		log.Printf("Trying to update to invalid status code: %s\n", updateSub.Action)
 		w.WriteHeader(http.StatusBadRequest)
 		return
+
 	}
 
-	_, err = app.Database.Exec(fmt.Sprintf("UPDATE subscriptions SET status = '%s' WHERE id = %d", status, subscription.ID))
+	_, err = app.Database.Exec(query)
 	if err != nil {
 		log.Printf("Error writing to database: %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -394,6 +409,91 @@ func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request
 	}
 	w.WriteHeader(http.StatusOK)
 	return
+}
+
+// this should be made private for internal use only
+func (app *App) cronUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	type CronUpdateData struct {
+		PrivateToken string
+	}
+	type Sub struct {
+		ID         int
+		ProductID  int
+		UserID     int
+		StartDate  time.Time
+		Status     string
+		NextStatus string
+	}
+	token := "top-secret"
+	decoder := json.NewDecoder(r.Body)
+	var cronUpdate CronUpdateData
+	err := decoder.Decode(&cronUpdate)
+	if err != nil {
+		log.Printf("Cron Update Error: %s\n", err)
+		http.Error(w, "Please pass the data as JSON", http.StatusBadRequest)
+		return
+	}
+	if cronUpdate.PrivateToken != token {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	// all subscriptions that need to be renewed
+	rows, err := app.Database.Query("SELECT sub.id, sub.product_id, sub.user_id, " +
+		"sub.start_date, sub.status, sub.nextStatus " +
+		"FROM subscriptions as sub " +
+		"LEFT JOIN products as prd on prd.id = sub.product_id " +
+		"WHERE sub.start_date < DATE_ADD(NOW(), INTERVAL prd.duration DAY) " +
+		"AND sub.status != 'CANCELLED' " +
+		"AND sub.status != 'EXPIRED'")
+
+	if err != nil {
+		log.Printf("Error reading database: %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	subscriptions := []Sub{}
+	for rows.Next() {
+		sub := Sub{}
+
+		err := rows.Scan(&sub.ID, &sub.ProductID, &sub.UserID,
+			&sub.StartDate, &sub.Status, &sub.NextStatus)
+		if err != nil {
+			log.Printf("Error reading database: %s", err)
+			return
+		}
+		subscriptions = append(subscriptions, sub)
+	}
+	err = rows.Err()
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Error reading database: %s", err)
+		return
+	}
+
+	query := ""
+	for _, sub := range subscriptions {
+		newStatus := ""
+		if sub.NextStatus == "QUEUED" {
+			newStatus = "ACTIVE"
+		} else {
+			newStatus = "PAUSED"
+		}
+		query += fmt.Sprintf("UPDATE subscriptions SET status = 'EXPIRED' WHERE id = %d;", sub.ID)
+		query += fmt.Sprintf("INSERT INTO subscriptions (user_id, product_id, start_date, "+
+			"status, nextStatus) VALUES(%d, %d, NOW(), '%s', '%s');",
+			sub.UserID, sub.ProductID, newStatus, sub.NextStatus)
+	}
+	_, err = app.Database.Exec(query)
+	if err != nil {
+		log.Printf("Error writing to database: %s\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	return
+
 }
 
 func (app *App) getCurrentUser(s *sessions.Session) UserSession {
@@ -425,14 +525,15 @@ func (app *App) checkAuthentication(user UserSession) bool {
 
 func (app *App) getSubscription(user *User, product_id string) (*Subscription, error) {
 	subscription := Subscription{}
-	err := app.Database.QueryRow("SELECT sub.id, sub.start_date, sub.status, "+
+	err := app.Database.QueryRow("SELECT sub.id, sub.start_date, sub.status, sub.nextStatus, "+
 		"prd.id, prd.name, prd.description, prd.price, prd.duration "+
 		"FROM subscriptions as sub "+
 		"LEFT JOIN products as prd on prd.id = sub.product_id "+
 		"WHERE sub.product_id="+product_id+" "+
 		"AND sub.user_id="+strconv.Itoa(user.ID)+" "+
-		"AND sub.status != 'CANCELLED'").Scan(&subscription.ID,
-		&subscription.StartDate, &subscription.Status,
+		"AND sub.status != 'CANCELLED' "+
+		"AND sub.status != 'EXPIRED'").Scan(&subscription.ID,
+		&subscription.StartDate, &subscription.Status, &subscription.NextStatus,
 		&subscription.Product.ID, &subscription.Product.Name,
 		&subscription.Product.Description, &subscription.Product.Price,
 		&subscription.Product.Duration)
@@ -448,12 +549,13 @@ func (app *App) getSubscription(user *User, product_id string) (*Subscription, e
 }
 
 func (app *App) getSubscriptions(user *User) ([]Subscription, error) {
-	rows, err := app.Database.Query("SELECT sub.id, sub.start_date, sub.status, " +
+	rows, err := app.Database.Query("SELECT sub.id, sub.start_date, sub.status, sub.nextStatus, " +
 		"prd.id, prd.name, prd.description, prd.price, prd.duration " +
 		"FROM subscriptions as sub " +
 		"LEFT JOIN products as prd on prd.id = sub.product_id " +
 		"WHERE sub.user_id=" + strconv.Itoa(user.ID) + " " +
-		"AND sub.status != 'CANCELLED'")
+		"AND sub.status != 'CANCELLED' " +
+		"AND sub.status != 'EXPIRED'")
 
 	if err != nil {
 		log.Printf("Error reading database: %s", err)
@@ -464,7 +566,7 @@ func (app *App) getSubscriptions(user *User) ([]Subscription, error) {
 	for rows.Next() {
 		subscription := Subscription{}
 		err := rows.Scan(&subscription.ID,
-			&subscription.StartDate, &subscription.Status,
+			&subscription.StartDate, &subscription.Status, &subscription.NextStatus,
 			&subscription.Product.ID, &subscription.Product.Name,
 			&subscription.Product.Description, &subscription.Product.Price,
 			&subscription.Product.Duration)

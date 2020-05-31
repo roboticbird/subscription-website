@@ -4,6 +4,7 @@ import axios from 'axios';
 const Context = React.createContext({
   isAuthenticated: false,
   authenticate: () => {},
+  logout: () => {},
   user: null
 });
 
@@ -13,6 +14,7 @@ export class LoginContextProvider extends Component {
     this.state = {
       isAuthenticated: JSON.parse(localStorage.getItem("isAuthenticated")) || false,
       authenticate: this.authenticate,
+      logout: this.logout,
       user: JSON.parse(localStorage.getItem("user")) || null,
     };
   }
@@ -37,6 +39,17 @@ export class LoginContextProvider extends Component {
 
   };
 
+  logout = () => {
+    const apiUrl = '/logout';
+    axios({
+      method: 'post', 
+      url: `${apiUrl}`, 
+    })
+    this.setAuthentication(false);
+    this.removeUser()
+
+  };
+
   getUser = () => {
     const apiUrl = '/userInfo';
     axios({
@@ -54,6 +67,14 @@ export class LoginContextProvider extends Component {
     	alert(error);
       })
   };
+  
+  removeUser = () => {
+    this.setState({
+      ...this.State,
+      user: null 
+    })
+    localStorage.removeItem("user");
+  };
 
 
   setAuthentication = isAuthenticated => {
@@ -65,9 +86,9 @@ export class LoginContextProvider extends Component {
   };
 
   render() {
-    const { isAuthenticated, authenticate, user } = this.state;
+    const { isAuthenticated, authenticate, logout, user } = this.state;
     return (
-      <Context.Provider value={{ isAuthenticated, authenticate, user }}>
+      <Context.Provider value={{ isAuthenticated, authenticate, logout, user }}>
         {this.props.children}
       </Context.Provider>
     );

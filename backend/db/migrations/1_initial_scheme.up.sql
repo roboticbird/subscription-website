@@ -21,6 +21,7 @@ CREATE TABLE subscriptions (
   product_id INT NOT NULL,
   start_date DATETIME NOT NULL,
   status VARCHAR(255) NOT NULL,
+  nextStatus VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
   INDEX(user_id),
   INDEX(product_id),

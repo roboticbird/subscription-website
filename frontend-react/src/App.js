@@ -1,26 +1,44 @@
 import React from 'react';
-import Products from './components/Products';
-import Navigation from './components/Navigation';
 import Login from './components/Login';
 import LoginContext from "./components/LoginContext";
+import Navigation from './components/Navigation';
+import Products from './components/Products';
+import Subscriptions from './components/Subscriptions';
 import { Router, Redirect } from "@reach/router"
 import './App.css';
 
 export default function App() {
-  let Home = () => (
-    <div>
+  let NavBar = () => (
       <LoginContext.Consumer>
-        {props => <Navigation isAuthenticated={props.isAuthenticated} user={props.user} />}
+        {props => <Navigation 
+          isAuthenticated={props.isAuthenticated} 
+          logout={props.logout}
+          user={props.user} 
+        />}
       </LoginContext.Consumer>
-      <Products />
+  );
+
+  let ProductPage = () => (
+    <div>
+      <NavBar />
+      <LoginContext.Consumer>
+        {props => <Products isAuthenticated={props.isAuthenticated} />}
+      </LoginContext.Consumer>
+    </div>
+  );
+  
+  let SubscriptionPage = () => (
+    <div>
+      <NavBar />
+      <LoginContext.Consumer>
+        {props => <Subscriptions isAuthenticated={props.isAuthenticated} />}
+      </LoginContext.Consumer>
     </div>
   );
 
   let LoginPage = () => (  
     <div>
-      <LoginContext.Consumer>
-        {props => <Navigation isAuthenticated={props.isAuthenticated} user={props.user} />}
-      </LoginContext.Consumer>
+      <NavBar />
       <LoginContext.Consumer>
         {props =>
           !props.isAuthenticated ? (
@@ -37,7 +55,8 @@ export default function App() {
     <div className="App">
     <LoginContext.Provider>
       <Router>
-       <Home path="/" />
+       <ProductPage path="/" />
+       <SubscriptionPage path="subscriptions" />
        <LoginPage path="login" />
       </Router>
     </LoginContext.Provider>
