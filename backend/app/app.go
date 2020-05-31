@@ -5,13 +5,13 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"log"
 	"net/http"
 	"strconv"
+	"subscription-website/backend/tasks"
 	"time"
-
-	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 )
 
 type App struct {
@@ -71,7 +71,7 @@ func (app *App) Setup() {
 		Methods("GET").
 		Path("/subscriptions").
 		HandlerFunc(app.subscriptionsHandler)
-	// this should be made private for internal use only
+	// for testing only
 	app.Router.
 		Methods("POST").
 		Path("/cronUpdate").
@@ -411,7 +411,7 @@ func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request
 	return
 }
 
-// this should be made private for internal use only
+// for testing only
 func (app *App) cronUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	type CronUpdateData struct {
 		PrivateToken string
@@ -437,60 +437,7 @@ func (app *App) cronUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-
-	// all subscriptions that need to be renewed
-	rows, err := app.Database.Query("SELECT sub.id, sub.product_id, sub.user_id, " +
-		"sub.start_date, sub.status, sub.nextStatus " +
-		"FROM subscriptions as sub " +
-		"LEFT JOIN products as prd on prd.id = sub.product_id " +
-		"WHERE sub.start_date < DATE_ADD(NOW(), INTERVAL prd.duration DAY) " +
-		"AND sub.status != 'CANCELLED' " +
-		"AND sub.status != 'EXPIRED'")
-
-	if err != nil {
-		log.Printf("Error reading database: %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-	subscriptions := []Sub{}
-	for rows.Next() {
-		sub := Sub{}
-
-		err := rows.Scan(&sub.ID, &sub.ProductID, &sub.UserID,
-			&sub.StartDate, &sub.Status, &sub.NextStatus)
-		if err != nil {
-			log.Printf("Error reading database: %s", err)
-			return
-		}
-		subscriptions = append(subscriptions, sub)
-	}
-	err = rows.Err()
-	if err != nil && err != sql.ErrNoRows {
-		log.Printf("Error reading database: %s", err)
-		return
-	}
-
-	query := ""
-	for _, sub := range subscriptions {
-		newStatus := ""
-		if sub.NextStatus == "QUEUED" {
-			newStatus = "ACTIVE"
-		} else {
-			newStatus = "PAUSED"
-		}
-		query += fmt.Sprintf("UPDATE subscriptions SET status = 'EXPIRED' WHERE id = %d;", sub.ID)
-		query += fmt.Sprintf("INSERT INTO subscriptions (user_id, product_id, start_date, "+
-			"status, nextStatus) VALUES(%d, %d, NOW(), '%s', '%s');",
-			sub.UserID, sub.ProductID, newStatus, sub.NextStatus)
-	}
-	_, err = app.Database.Exec(query)
-	if err != nil {
-		log.Printf("Error writing to database: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	tasks.OrderUpdate(app.Database)
 	w.WriteHeader(http.StatusOK)
 	return
 
