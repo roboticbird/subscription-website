@@ -37,10 +37,6 @@ func (app *App) Setup() {
 	// set up router
 	app.Router.
 		Methods("GET").
-		Path("/forbidden").
-		HandlerFunc(app.forbiddenHandler)
-	app.Router.
-		Methods("GET").
 		Path("/userInfo").
 		HandlerFunc(app.userInfoHandler)
 	app.Router.
@@ -78,27 +74,10 @@ func (app *App) Setup() {
 		HandlerFunc(app.cronUpdateHandler)
 }
 
-func (app *App) forbiddenHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := app.Store.Get(r, "session.id")
-	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = session.Save(r, w)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Write([]byte("Forbidden\n"))
-}
-
 func (app *App) userInfoHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := app.Store.Get(r, "session.id")
 	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -110,7 +89,7 @@ func (app *App) userInfoHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/forbidden", http.StatusFound)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -256,8 +235,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := app.Store.Get(r, "session.id")
 	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -269,7 +247,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/forbidden", http.StatusFound)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -306,8 +284,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 func (app *App) subscriptionsHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := app.Store.Get(r, "session.id")
 	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -320,7 +297,7 @@ func (app *App) subscriptionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/forbidden", http.StatusFound)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -346,8 +323,7 @@ func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request
 
 	session, err := app.Store.Get(r, "session.id")
 	if err != nil {
-		log.Printf("Session store error: %s\n", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -360,7 +336,7 @@ func (app *App) updateSubscriptionHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/forbidden", http.StatusFound)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -433,7 +409,7 @@ func (app *App) cronUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if cronUpdate.PrivateToken != token {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 	tasks.OrderUpdate(app.Database)

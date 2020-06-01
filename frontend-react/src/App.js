@@ -31,7 +31,12 @@ export default function App() {
     <div>
       <NavBar />
       <LoginContext.Consumer>
-        {props => <Subscriptions isAuthenticated={props.isAuthenticated} />}
+        {props => 
+          props.isAuthenticated ? (
+            <Subscriptions isAuthenticated={props.isAuthenticated} />
+            ) : (
+            <Redirect to="/" noThrow />
+        )}
       </LoginContext.Consumer>
     </div>
   );

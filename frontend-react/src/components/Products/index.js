@@ -24,7 +24,7 @@ class Products extends React.Component {
           showPopup: false,
         })
       })
-      .catch(error => this.setState({ error, isLoading: false }));
+      .catch(error => this.setState({ error:error, isLoading: false }));
   }
 
   togglePopup(event, id) {
@@ -66,7 +66,8 @@ class Products extends React.Component {
             })
           ) : (
              <h3>Loading...</h3>
-        )}
+          )
+        }
       </React.Fragment> 
     );
   }

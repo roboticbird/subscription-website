@@ -60,6 +60,7 @@ class Subscriptions extends React.Component {
 	<hr />
         {
 	  !isLoading ? (
+            subscriptions == null ? <></> : (
             subscriptions.map(subscription => {
 
               const { id, product, startDate, subStatus, nextStatus } = subscription 
@@ -89,7 +90,7 @@ class Subscriptions extends React.Component {
                 </div>
               );
             })
-          ) : (
+          )) : (
              <h3>Loading...</h3>
         )}
       </React.Fragment> 

@@ -17,6 +17,8 @@ export class LoginContextProvider extends Component {
       logout: this.logout,
       user: JSON.parse(localStorage.getItem("user")) || null,
     };
+    // get user to check authentication
+    this.getUser();
   }
 
   authenticate = (email, password) => {
@@ -64,7 +66,9 @@ export class LoginContextProvider extends Component {
         localStorage.setItem("user", JSON.stringify(response.data));
       })
       .catch(error => {
-    	alert(error);
+        if (error.response.status === 403) {
+          this.logout()
+        }
       })
   };
   
