@@ -177,11 +177,10 @@ func (app *App) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write([]byte("Logout in successfully\n"))
+	w.Write([]byte("Logout successfully\n"))
 }
 
 func (app *App) getProduct(product_id string) (*Product, error) {
-
 	product := Product{}
 	err := app.Database.QueryRow("SELECT * FROM products WHERE id = ?", product_id).Scan(&product.ID, &product.Name, &product.Description, &product.Price, &product.Duration)
 	if err != nil {
@@ -199,7 +198,7 @@ func (app *App) productHandler(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&prodData)
 	if err != nil {
 		log.Printf("Product error: %s\n", err)
-		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
+		http.Error(w, "Please pass the data as JSON", http.StatusBadRequest)
 		return
 	}
 
@@ -279,7 +278,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	err = decoder.Decode(&newSub)
 	if err != nil {
 		log.Printf("New subscription error: %s\n", err)
-		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
+		http.Error(w, "Please pass the data as JSON", http.StatusBadRequest)
 		return
 	}
 
