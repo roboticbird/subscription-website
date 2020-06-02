@@ -35,7 +35,20 @@ lists all the products.
 
 ## Frontend 
 The home landing page has a list of all the products along with a navigation bar up the top with
-a link to a login page.
+a link to a login page. 
+
+I didn't get around to adding a register page so you will have to use one of the existing users
+in the database. Here they are:
+```
++----+------+---------------+----------+
+| id | name | email         | password |
++----+------+---------------+----------+
+| 1  | max  | max@cmail.com | pw       |
+| 2  | ann  | ann@cmail.com | passwd   |
+| 3  | bea  | bea@cmail.com | pword    |
+| 4  | tom  | tom@cmail.com | password |
++----+------+---------------+----------+
+```
 
 If you want to Buy a product/look at your orders you will need to log in. I have not built a
 registration page so you will need to use an existing user.
