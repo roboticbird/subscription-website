@@ -1,6 +1,6 @@
 # Assignment
 
-##User Story 
+## User Story 
 As a user, I want to be able to select from a list a product, and based on this product to receive a
 subscription plan.
 ### AC:
@@ -12,7 +12,7 @@ subscription plan.
 - On the above page I have the option to pause/unpause my subscription
 - On the above page I can cancel my subscription
 
-##Technical details:
+## Technical details:
 Each product from the list should have a different subscription duration and a price to reflect
 the length of the subscription duration
 

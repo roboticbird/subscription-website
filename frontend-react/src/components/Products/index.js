@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import BuyPopup from '../BuyPopup';
+import MessagePopup from '../MessagePopup';
 
 class Products extends React.Component {
   constructor(props) {
@@ -10,6 +11,8 @@ class Products extends React.Component {
       products: [],
       error: null,
       product_id: -1,
+      showBuyPopup: false,
+      showMessagePopup: false,
     }
   }
 
@@ -21,16 +24,22 @@ class Products extends React.Component {
         this.setState({
           products: response.data,
           isLoading: false,
-          showPopup: false,
         })
       })
       .catch(error => this.setState({ error:error, isLoading: false }));
   }
 
-  togglePopup(event, id) {
+  toggleBuyPopup(event, id) {
     this.setState({
-      showPopup: !this.state.showPopup,
+      showBuyPopup: !this.state.showBuyPopup,
       product_id: id
+    });
+  }
+
+  toggleMessagePopup(event, message) {
+    this.setState({
+      showMessagePopup: !this.state.showMessagePopup,
+      message: message 
     });
   }
 
@@ -50,14 +59,22 @@ class Products extends React.Component {
                   <p>{description}</p>
                   <p>Price: {(price/100).toFixed(2)} EUR, Duration: {duration} days</p>
                   {this.props.isAuthenticated ?
-                   <button onClick={(e) => this.togglePopup(e, id)}>Subscribe</button>
+                   <button onClick={(e) => this.toggleBuyPopup(e, id)}>Subscribe</button>
                    : null
                   }
                   <hr />
-		  {(this.state.showPopup && this.state.product_id === id) ? 
+		  {(this.state.showBuyPopup && this.state.product_id === id) ? 
 		    <BuyPopup
 		      product={product}
-		      closePopup={(e) => this.togglePopup(e, id)}
+		      closeBuyPopup={(e) => this.toggleBuyPopup(e, id)}
+		      toggleMessagePopup={this.toggleMessagePopup.bind(this)}
+		    />
+		    : null
+		  }
+		  {(this.state.showMessagePopup) ? 
+		    <MessagePopup
+                      message={this.state.message} 
+		      toggleMessagePopup={this.toggleMessagePopup.bind(this)}
 		    />
 		    : null
 		  }

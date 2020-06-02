@@ -19,12 +19,16 @@ class BuyPopup extends React.Component {
       }
     })
       .then((response) => {
-        this.props.closePopup();
-        console.log("sucess")
+        this.props.toggleMessagePopup(null, "Subscription successful."); 
+        this.props.closeBuyPopup();
       })
       .catch(error => {
-        this.props.closePopup();
-    	console.log(error);
+        var errMsg = "Error purchasing subscription"
+        if (error.response.status === 304) {
+          errMsg = "You are already subscribed"
+        }
+        this.props.toggleMessagePopup(null, errMsg); 
+        this.props.closeBuyPopup();
       })
 
 

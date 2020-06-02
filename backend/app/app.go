@@ -263,7 +263,7 @@ func (app *App) newSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	subscription, err := app.getSubscription(user.UserDetails, strconv.Itoa(newSub.ProductId))
 	if subscription != nil {
 		log.Printf("User trying to buy duplicate subscription: user=%d, product=%d, status=%s\n", user.UserDetails.ID, newSub.ProductId, subscription.Status)
-		w.WriteHeader(http.StatusNotModified)
+		http.Error(w, "You are already subscribed", http.StatusNotModified)
 		return
 	}
 	if err != nil && err != sql.ErrNoRows {
